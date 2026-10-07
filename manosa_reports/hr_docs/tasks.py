@@ -1,8 +1,8 @@
 import frappe
 from frappe.utils import getdate, nowdate
 
-from mci_hr_portal.hr_docs.audience import mark_overdue, send_notice, sync_assignments
-from mci_hr_portal.utils.schedule import reminder_due
+from manosa_reports.hr_docs.audience import mark_overdue, send_notice, sync_assignments
+from manosa_reports.hr_docs.schedule import reminder_due
 
 
 def daily():

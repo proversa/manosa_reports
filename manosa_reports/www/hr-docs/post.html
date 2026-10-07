@@ -59,7 +59,7 @@ frappe.ready(() => {
 	button.addEventListener("click", () => {
 		button.disabled = true;
 		frappe.call({
-			method: "mci_hr_portal.api.acknowledge",
+			method: "manosa_reports.hr_docs.api.acknowledge",
 			args: { post: {{ post.name | tojson }} },
 			callback: (r) => {
 				const box = document.getElementById("ack-box");

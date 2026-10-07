@@ -2,8 +2,8 @@ import frappe
 from frappe import _
 from frappe.utils import getdate, now_datetime, nowdate
 
-from mci_hr_portal.hr_docs.audience import DONE_STATUSES, can_view, get_session_employee
-from mci_hr_portal.utils.schedule import acknowledged_status
+from manosa_reports.hr_docs.audience import DONE_STATUSES, can_view, get_session_employee
+from manosa_reports.hr_docs.schedule import acknowledged_status
 
 
 def _get_viewable_post(post: str):

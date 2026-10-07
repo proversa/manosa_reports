@@ -1,3 +1,5 @@
+"""Idempotent setup for the HR Docs module, run after every migrate."""
+
 import frappe
 
 ROLE = "HR Docs Manager"
@@ -10,27 +12,28 @@ DEFAULT_CATEGORIES = [
 ]
 
 
-def before_install():
+def ensure_role():
 	if not frappe.db.exists("Role", ROLE):
 		frappe.get_doc({"doctype": "Role", "role_name": ROLE, "desk_access": 1}).insert(ignore_permissions=True)
 
 
-def after_install():
-	before_install()
-	# Posting rights go to the Administrator first; HR staff can be given the role later.
-	admin = frappe.get_doc("User", "Administrator")
-	if ROLE not in [r.role for r in admin.roles]:
+def after_migrate():
+	ensure_role()
+	if frappe.db.get_value("Has Role", {"parent": "Administrator", "role": ROLE}) is None:
+		# Posting rights go to the Administrator first; HR staff can be given the role later.
+		admin = frappe.get_doc("User", "Administrator")
 		admin.append("roles", {"role": ROLE})
 		admin.save(ignore_permissions=True)
 
+	if not frappe.db.exists("DocType", "HR Doc Category") or frappe.db.count("HR Doc Category"):
+		return
 	for order, (name, description) in enumerate(DEFAULT_CATEGORIES, start=1):
-		if not frappe.db.exists("HR Doc Category", name):
-			frappe.get_doc(
-				{
-					"doctype": "HR Doc Category",
-					"category_name": name,
-					"description": description,
-					"sort_order": order * 10,
-					"is_active": 1,
-				}
-			).insert(ignore_permissions=True)
+		frappe.get_doc(
+			{
+				"doctype": "HR Doc Category",
+				"category_name": name,
+				"description": description,
+				"sort_order": order * 10,
+				"is_active": 1,
+			}
+		).insert(ignore_permissions=True)

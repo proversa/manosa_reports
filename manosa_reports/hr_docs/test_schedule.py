@@ -1,7 +1,7 @@
 import unittest
 from datetime import date
 
-from mci_hr_portal.utils.schedule import acknowledged_status, reminder_due
+from manosa_reports.hr_docs.schedule import acknowledged_status, reminder_due
 
 DUE = date(2026, 10, 14)
 

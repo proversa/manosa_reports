@@ -3,7 +3,7 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import now_datetime
 
-from mci_hr_portal.hr_docs.audience import supersede_older_versions, sync_assignments
+from manosa_reports.hr_docs.audience import supersede_older_versions, sync_assignments
 
 
 class HRDocPost(Document):

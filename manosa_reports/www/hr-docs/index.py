@@ -3,7 +3,7 @@ from collections import defaultdict
 import frappe
 from frappe import _
 
-from mci_hr_portal.hr_docs.audience import (
+from manosa_reports.hr_docs.audience import (
 	EMPLOYEE_FIELDS,
 	PENDING_STATUSES,
 	employee_matches,
