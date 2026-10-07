@@ -1,0 +1,86 @@
+{
+ "actions": [],
+ "creation": "2026-10-07 09:30:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "audience_type",
+  "department",
+  "designation",
+  "employee",
+  "employee_name",
+  "hired_after"
+ ],
+ "fields": [
+  {
+   "columns": 3,
+   "default": "All Employees",
+   "fieldname": "audience_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Audience Type",
+   "options": "All Employees\nDepartment\nDesignation\nEmployee\nHired On or After",
+   "reqd": 1
+  },
+  {
+   "columns": 2,
+   "depends_on": "eval:doc.audience_type=='Department'",
+   "fieldname": "department",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Department",
+   "mandatory_depends_on": "eval:doc.audience_type=='Department'",
+   "options": "Department"
+  },
+  {
+   "columns": 2,
+   "depends_on": "eval:doc.audience_type=='Designation'",
+   "fieldname": "designation",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Designation",
+   "mandatory_depends_on": "eval:doc.audience_type=='Designation'",
+   "options": "Designation"
+  },
+  {
+   "columns": 2,
+   "depends_on": "eval:doc.audience_type=='Employee'",
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Employee",
+   "mandatory_depends_on": "eval:doc.audience_type=='Employee'",
+   "options": "Employee"
+  },
+  {
+   "depends_on": "eval:doc.audience_type=='Employee'",
+   "fetch_from": "employee.employee_name",
+   "fieldname": "employee_name",
+   "fieldtype": "Data",
+   "label": "Employee Name",
+   "read_only": 1
+  },
+  {
+   "columns": 1,
+   "depends_on": "eval:doc.audience_type=='Hired On or After'",
+   "fieldname": "hired_after",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Hired On or After",
+   "mandatory_depends_on": "eval:doc.audience_type=='Hired On or After'"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-10-07 09:30:00.000000",
+ "modified_by": "Administrator",
+ "module": "HR Docs",
+ "name": "HR Doc Audience",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

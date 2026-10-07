@@ -1,0 +1,76 @@
+{% extends "templates/web.html" %}
+
+{% block title %}{{ post.title }}{% endblock %}
+
+{% block page_content %}
+<div class="hr-docs-post-view">
+	<p class="small mb-2"><a href="/hr-docs">&larr; {{ _("HR Docs & Advisories") }}</a></p>
+	<h2 class="mb-1">{{ post.title }}</h2>
+	<p class="text-muted mb-3">
+		{{ post.category }}
+		{% if post.issued_by %} · {{ _("Issued by") }} {{ post.issued_by }}{% endif %}
+		{% if post.memo_date %} · {{ frappe.format(post.memo_date, {'fieldtype': 'Date'}) }}{% endif %}
+		{% if post.effective_date %} · {{ _("Effective") }} {{ frappe.format(post.effective_date, {'fieldtype': 'Date'}) }}{% endif %}
+		{% if version_count > 1 %} · {{ _("Version") }} {{ version_count }}{% endif %}
+	</p>
+	{% if post.summary %}<p>{{ post.summary }}</p>{% endif %}
+
+	{% if ack %}
+	<div id="ack-box" class="alert {% if acknowledged %}alert-success{% elif ack.status == 'Overdue' %}alert-danger{% else %}alert-warning{% endif %} d-flex flex-wrap justify-content-between align-items-center">
+		<div id="ack-text">
+			{% if acknowledged %}
+				{{ _("You acknowledged this document on {0}.").format(frappe.format(ack.acknowledged_on, {'fieldtype': 'Datetime'})) }}
+			{% else %}
+				{{ _("This is required reading. Please read it and acknowledge by {0}.").format(frappe.format(ack.due_on, {'fieldtype': 'Date'})) }}
+			{% endif %}
+		</div>
+		{% if not acknowledged %}
+		<button id="ack-button" class="btn btn-primary btn-sm mt-2 mt-md-0" disabled>
+			{{ _("I have read and understood this") }}
+		</button>
+		{% endif %}
+	</div>
+	{% endif %}
+
+	{% if post.current_file %}
+	<div class="border rounded mb-3" style="height: 80vh;">
+		<iframe id="pdf-frame" src="{{ pdf_url }}" title="{{ post.title }}" style="width: 100%; height: 100%; border: 0;"></iframe>
+	</div>
+	<a class="btn btn-default btn-sm" href="{{ pdf_url }}" target="_blank" rel="noopener">{{ _("Open in new tab / download") }}</a>
+	{% else %}
+	<p class="text-muted">{{ _("No PDF has been attached yet.") }}</p>
+	{% endif %}
+
+	{% if is_manager %}
+	<p class="mt-4 small"><a href="/app/hr-doc-post/{{ post.name }}">{{ _("Edit this post") }}</a></p>
+	{% endif %}
+</div>
+{% endblock %}
+
+{% block script %}
+{{ super() }}
+<script>
+frappe.ready(() => {
+	const button = document.getElementById("ack-button");
+	const frame = document.getElementById("pdf-frame");
+	if (!button) return;
+	// The PDF request records "opened" in the read log; acknowledging is allowed once it has loaded.
+	if (frame) frame.addEventListener("load", () => { button.disabled = false; });
+	button.addEventListener("click", () => {
+		button.disabled = true;
+		frappe.call({
+			method: "mci_hr_portal.api.acknowledge",
+			args: { post: {{ post.name | tojson }} },
+			callback: (r) => {
+				const box = document.getElementById("ack-box");
+				box.classList.remove("alert-warning", "alert-danger");
+				box.classList.add("alert-success");
+				document.getElementById("ack-text").textContent = {{ _("Thank you. Your acknowledgment has been recorded.") | tojson }};
+				button.remove();
+			},
+			error: () => { button.disabled = false; },
+		});
+	});
+});
+</script>
+{% endblock %}
