@@ -66,3 +66,15 @@ def acknowledge(post: str):
 	ack.user_agent = (frappe.get_request_header("User-Agent") or "")[:500]
 	ack.save(ignore_permissions=True)
 	return {"status": ack.status, "acknowledged_on": ack.acknowledged_on}
+
+
+@frappe.whitelist(methods=["GET"])
+def pending_count() -> int:
+	"""Required reads the logged-in employee has not acknowledged yet, for the menu badge."""
+	employee = get_session_employee()
+	if not employee:
+		return 0
+	return frappe.db.count(
+		"HR Doc Acknowledgement",
+		{"employee": employee, "status": ["in", ["Not Opened", "Opened", "Overdue"]]},
+	)

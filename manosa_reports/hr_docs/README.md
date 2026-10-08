@@ -13,6 +13,7 @@ An employee portal at `/hr-docs` on merps.manosa.com. Employees browse official 
 | HR Docs workspace, HR Doc Compliance report | Admin home in the Desk, and acknowledged, pending and overdue counts for each post. |
 | Daily job | Archives expired advisories, adds new hires to required posts, marks reads overdue, and emails reminders to the employee. |
 | HR Docs Manager role | Gives posting rights. It is given to Administrator after migrate. |
+| HR menu and badge | After migrate, the website top bar gets an **HR** dropdown with **HR Docs & Advisories** in it, and existing items are kept. A red badge on HR, the menu entry and the portal sidebar link shows how many required reads the logged-in employee has not acknowledged. The badge script is kept between markers in **Website Script**, and nothing else there is touched. In the Desk, the HR Docs workspace is nested under **HR** in the sidebar. |
 
 ## Wiring into the app (one time)
 
