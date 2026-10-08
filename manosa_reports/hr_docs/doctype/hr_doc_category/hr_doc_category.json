@@ -47,7 +47,7 @@
  ],
  "index_web_pages_for_search": 0,
  "links": [],
- "modified": "2026-10-07 09:30:00.000000",
+ "modified": "2026-10-08 14:00:00.000000",
  "modified_by": "Administrator",
  "module": "HR Docs",
  "name": "HR Doc Category",
@@ -77,6 +77,10 @@
    "role": "System Manager",
    "share": 1,
    "write": 1
+  },
+  {
+   "read": 1,
+   "role": "All"
   }
  ],
  "sort_field": "sort_order",
