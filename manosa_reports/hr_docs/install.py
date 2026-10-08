@@ -1,5 +1,7 @@
 """Idempotent setup for the HR Docs module, run after every migrate."""
 
+import os
+
 import frappe
 
 ROLE = "HR Docs Manager"
@@ -21,7 +23,7 @@ def after_migrate():
 	ensure_role()
 	remove_old_portal_menu()
 	remove_old_portal_badge_script()
-	nest_workspace_under_hr()
+	sync_workspace()
 	if frappe.db.get_value("Has Role", {"parent": "Administrator", "role": ROLE}) is None:
 		# Posting rights go to the Administrator first; HR staff can be given the role later.
 		admin = frappe.get_doc("User", "Administrator")
@@ -78,8 +80,16 @@ def remove_old_portal_badge_script():
 	doc.javascript = (before.rstrip() + "\n" + after.lstrip()).strip()
 	doc.save(ignore_permissions=True)
 
-def nest_workspace_under_hr():
-	"""Show the HR Docs workspace as a sub-item of the HR workspace in the Desk sidebar."""
-	if frappe.db.exists("Workspace", "HR") and frappe.db.exists("Workspace", "HR Docs"):
-		if frappe.db.get_value("Workspace", "HR Docs", "parent_page") != "HR":
-			frappe.db.set_value("Workspace", "HR Docs", "parent_page", "HR")
+def sync_workspace():
+	"""Reload the HR Docs workspace from its file so every Desk user sees it under HR.
+
+	Migrate skips workspace files whose timestamp has not changed, so an earlier copy that only
+	HR Docs Managers could see would otherwise stay in place.
+	"""
+	from frappe.modules.import_file import import_file_by_path
+
+	import_file_by_path(
+		os.path.join(os.path.dirname(__file__), "workspace", "hr_docs", "hr_docs.json"), force=True
+	)
+	if not frappe.db.exists("Workspace", "HR"):
+		frappe.db.set_value("Workspace", "HR Docs", "parent_page", "")
