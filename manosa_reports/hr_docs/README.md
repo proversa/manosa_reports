@@ -13,7 +13,7 @@ An employee portal at `/hr-docs` on merps.manosa.com. Employees browse official 
 | HR Docs workspace, HR Doc Compliance report | Admin home in the Desk, and acknowledged, pending and overdue counts for each post. |
 | Daily job | Archives expired advisories, adds new hires to required posts, marks reads overdue, and emails reminders to the employee. |
 | HR Docs Manager role | Gives posting rights. It is given to Administrator after migrate. |
-| HR menu and badge | After migrate, the website top bar gets an **HR** dropdown with **HR Docs & Advisories** in it, and existing items are kept. A red badge on HR, the menu entry and the portal sidebar link shows how many required reads the logged-in employee has not acknowledged. The badge script is kept between markers in **Website Script**, and nothing else there is touched. In the Desk, the HR Docs workspace is nested under **HR** in the sidebar. |
+| Desk sidebar badge | The HR Docs workspace sits under **HR** in the Desk sidebar. A red number on **HR Docs**, and on **HR** while the group is collapsed, shows the logged-in user's unacknowledged required reads. It refreshes every 5 minutes and on each page change. The script is served by Frappe at `/hr_docs_sidebar.js`, so it needs no asset build. |
 
 ## Wiring into the app (one time)
 
@@ -29,6 +29,8 @@ scheduler_events = {
 		"0 7 * * *": ["manosa_reports.hr_docs.tasks.daily"],
 	},
 }
+
+app_include_js = ["/hr_docs_sidebar.js"]  # replace an existing empty app_include_js = []
 
 standard_portal_menu_items = [
 	{"title": "HR Docs & Advisories", "route": "/hr-docs", "role": "Employee"},
