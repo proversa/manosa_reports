@@ -7,9 +7,17 @@
 <style>
 	/* Show only the first few lines of each description in the list; the post page shows it all. */
 	.hr-docs-desc-clamp { max-height: 4.5em; line-height: 1.5em; overflow: hidden; }
+	/* Alternate category backgrounds so each category reads as its own block. */
+	.hr-docs-category { border-radius: .5rem; padding: 1rem 1rem .5rem; }
+	.hr-docs-shade-a { background: rgba(37, 99, 235, .06); }
+	.hr-docs-shade-b { background: rgba(120, 113, 108, .09); }
+	.hr-docs-show-more { margin-bottom: .75rem; }
 	.hr-docs-desc-clamp p, .hr-docs-desc-clamp ul, .hr-docs-desc-clamp ol { margin-bottom: 0; }
 </style>
 {% endblock %}
+
+{% set INITIAL_POSTS = 3 %}
+{% set MORE_POSTS = 5 %}
 
 {% block page_content %}
 <div class="hr-docs">
@@ -76,9 +84,9 @@
 		</div>
 	</form>
 
-	{% macro post_card(post) %}
+	{% macro post_card(post, hidden=False) %}
 	{% set url = "/hr-docs/post?name=" ~ (post.name | urlencode) %}
-	<div class="hr-docs-post card mb-3">
+	<div class="hr-docs-post card mb-3{% if hidden %} d-none hr-docs-more{% endif %}">
 		<div class="card-body">
 			<div class="d-flex justify-content-between align-items-start">
 				<h6 class="mb-1"><a class="text-reset" href="{{ url }}">{{ post.title }}</a></h6>
@@ -115,14 +123,19 @@
 	{% endif %}
 
 	{% for category in categories %}
-	<section class="mt-4">
+	<section class="hr-docs-category {{ loop.cycle('hr-docs-shade-a', 'hr-docs-shade-b') }} mt-4">
 		<h4 class="mb-1">{{ category.name }}</h4>
 		{% if category.description %}<p class="text-muted small">{{ category.description }}</p>{% endif %}
 		{% for post in category.posts %}
-			{{ post_card(post) }}
+			{{ post_card(post, hidden=loop.index > INITIAL_POSTS) }}
 		{% else %}
 			<p class="text-muted">{{ _("No posts in this category yet.") }}</p>
 		{% endfor %}
+		{% if category.posts | length > INITIAL_POSTS %}
+		<button type="button" class="btn btn-default btn-sm hr-docs-show-more">
+			{{ _("Show more") }} (<span class="hr-docs-remaining">{{ category.posts | length - INITIAL_POSTS }}</span> {{ _("left") }})
+		</button>
+		{% endif %}
 	</section>
 	{% endfor %}
 
@@ -130,4 +143,20 @@
 	<p class="text-muted mt-4">{{ _("No posts match your search.") }}</p>
 	{% endif %}
 </div>
+{% endblock %}
+
+{% block script %}
+{{ super() }}
+<script>
+// "Show more" reveals the next few hidden posts in its category, in place.
+document.addEventListener("click", (e) => {
+	const button = e.target.closest(".hr-docs-show-more");
+	if (!button) return;
+	const hidden = button.closest(".hr-docs-category").querySelectorAll(".hr-docs-more.d-none");
+	[...hidden].slice(0, {{ MORE_POSTS }}).forEach((card) => card.classList.remove("d-none"));
+	const left = hidden.length - {{ MORE_POSTS }};
+	if (left > 0) button.querySelector(".hr-docs-remaining").textContent = left;
+	else button.remove();
+});
+</script>
 {% endblock %}

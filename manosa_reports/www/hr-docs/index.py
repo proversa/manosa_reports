@@ -89,7 +89,10 @@ def get_context(context):
 	for post in posts:
 		by_category[post.category].append(post)
 	for category in categories:
-		category.posts = by_category.get(category.name, [])
+		# Newest first within each category; the page shows the first few and reveals the rest on demand.
+		category.posts = sorted(
+			by_category.get(category.name, []), key=lambda p: str(p.published_on or ""), reverse=True
+		)
 
 	if selected_category:
 		categories = [c for c in categories if c.name == selected_category]
