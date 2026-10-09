@@ -10,10 +10,11 @@ An employee portal at `/hr-docs` on merps.manosa.com. Employees browse official 
 | HR Doc Post | One document or advisory: details, audience, required-reading settings, and PDF versions. |
 | HR Doc Acknowledgement | The read log, with one row per person, per required post, per version. Nobody can edit or delete these rows. |
 | `/hr-docs`, `/hr-docs/post?name=…` | The employee portal and PDF viewer, with the "I have read and understood this" button. |
+| HR Doc Comment, HR Doc View | Comments on posts, with @call-outs that email the person called out, and who opened each post. They drive the "Seen by" count, the comment counts, and the unread-comment badges. |
 | HR Docs workspace, HR Doc Compliance report | Admin home in the Desk, and acknowledged, pending and overdue counts for each post. |
 | Daily job | Archives expired advisories, adds new hires to required posts, marks reads overdue, and emails reminders to the employee. |
 | HR Docs Manager role | Gives posting rights. It is given to Administrator after migrate. |
-| Desk sidebar badge | The HR Docs workspace sits under **HR** in the Desk sidebar. A red number on **HR Docs**, and on **HR** while the group is collapsed, shows the logged-in user's unacknowledged required reads. It refreshes every 5 minutes and on each page change. The script is served by Frappe at `/hr_docs_sidebar.js`, so it needs no asset build. |
+| Desk sidebar badge | The HR Docs workspace sits under **HR** in the Desk sidebar. A red number on **HR Docs**, and on **HR** while the group is collapsed, shows the logged-in user's unacknowledged required reads. A blue 💬 number shows comments other people posted since the user last opened those posts. It refreshes every 5 minutes and on each page change. The script is served by Frappe at `/hr_docs_sidebar.js`, so it needs no asset build. |
 
 ## Wiring into the app (one time)
 
@@ -77,7 +78,8 @@ Code copied with `docker cp` lives only in the running containers. It is lost if
 ## Posting a document
 
 1. In the Desk, open **HR Docs → New Post**.
-2. Fill in the title, category, type and summary. The PDFs are scans, so search only finds words in the title, summary and tags.
+2. Fill in the title, category, type and description. The description takes formatted text; the post card shows its first three lines and the post page shows it in a scrolling box. The PDFs are scans, so search only finds words in the title, description and tags.
+   Untick **Allow Comments** under Discussion to close comments on a post.
 3. Under **PDF**, add a row and attach the PDF. Leave "Private" ticked.
 4. For required reading, tick **Required Reading**, set the days allowed (7 by default), and add audience rows. Leave the audience empty to target everyone.
 5. Set the status to **Published** and save. Everyone in the audience gets an email, and the post appears under "Required for you".
@@ -87,5 +89,6 @@ To replace a PDF, add a new row under **PDF**. Untick "Everyone Must Acknowledge
 ## Notes
 
 - Employees need a website login linked to an active Employee record (Employee → User ID).
+- Anyone who can see a post can comment on it and remove their own comments. HR Docs Managers can remove any comment, and see them all under **HR Docs → Comments**.
 - Reminders go 3 days before the due date, on the due date, then weekly, to the employee only.
 - Never commit HR PDFs to this repository.

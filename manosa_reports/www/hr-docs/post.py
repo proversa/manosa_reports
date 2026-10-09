@@ -2,6 +2,7 @@ import frappe
 from frappe import _
 from frappe.utils import cint
 
+from manosa_reports.hr_docs import discussion
 from manosa_reports.hr_docs.audience import (
 	DONE_STATUSES,
 	can_view,
@@ -27,6 +28,7 @@ def get_context(context):
 		raise frappe.PermissionError(_("You do not have access to this document."))
 
 	ack = ensure_assignment(post, employee)
+	discussion.record_view(post, employee)
 
 	context.no_cache = 1
 	context.show_sidebar = True
@@ -39,3 +41,4 @@ def get_context(context):
 	context.pdf_url = f"/api/method/manosa_reports.hr_docs.api.view_pdf?post={post.name}"
 	context.parents = [{"route": "hr-docs", "title": _("HR Docs & Advisories")}]
 	context.version_count = cint(post.current_version_no)
+	context.seen_count = discussion.seen_counts([post.name]).get(post.name, 0)

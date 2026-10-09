@@ -1,18 +1,27 @@
-// HR Docs: red badge on "HR > HR Docs" in the Desk sidebar with the logged-in user's unacknowledged required reads.
+// HR Docs: badges on "HR > HR Docs" in the Desk sidebar for the logged-in user.
+// Red: required reads not yet acknowledged. Blue: comments posted since the user last opened those posts.
 // Served by Frappe at /hr_docs_sidebar.js and loaded on every Desk page through app_include_js in hooks.py,
 // so it needs no asset build.
 (function () {
-	var count = 0;
+	var counts = { required: 0, comments: 0 };
 	var REFRESH_MS = 5 * 60 * 1000;
+	var KINDS = [
+		{ key: "required", color: "var(--red-500,#e03636)", title: " required HR document(s) not yet acknowledged" },
+		{ key: "comments", color: "var(--blue-500,#2490ef)", title: " new comment(s) on HR Docs posts" },
+	];
 
-	function badge(cls) {
+	function text(n) {
+		return n > 99 ? "99+" : String(n);
+	}
+
+	function badge(kind, n) {
 		var b = document.createElement("span");
-		b.className = "hr-docs-badge " + cls;
-		b.textContent = count > 99 ? "99+" : String(count);
-		b.title = count + " required HR document(s) not yet acknowledged";
+		b.className = "hr-docs-badge hr-docs-badge-" + kind.key;
+		b.textContent = (kind.key === "comments" ? "💬 " : "") + text(n);
+		b.title = n + kind.title;
 		b.style.cssText =
 			"display:inline-block;margin-left:6px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;" +
-			"background:var(--red-500,#e03636);color:#fff;font-size:11px;font-weight:600;" +
+			"background:" + kind.color + ";color:#fff;font-size:11px;font-weight:600;" +
 			"line-height:18px;text-align:center;flex-shrink:0;";
 		return b;
 	}
@@ -23,30 +32,33 @@
 		return container.querySelector(":scope > .standard-sidebar-item .item-anchor, :scope > .standard-sidebar-item, :scope > a");
 	}
 
-	function paint() {
-		document.querySelectorAll(".hr-docs-badge").forEach(function (b) {
-			if (!count || b.textContent !== (count > 99 ? "99+" : String(count))) b.remove();
+	function paintRow(row) {
+		if (!row) return;
+		var label = row.querySelector(".sidebar-item-label") || row;
+		KINDS.forEach(function (kind) {
+			var n = counts[kind.key];
+			var existing = label.querySelector(".hr-docs-badge-" + kind.key);
+			if (existing && (!n || existing.title !== n + kind.title)) {
+				existing.remove();
+				existing = null;
+			}
+			if (n && !existing) label.appendChild(badge(kind, n));
 		});
-		if (!count) return;
-		var docs = itemRow("HR Docs");
-		if (docs && !docs.querySelector(".hr-docs-badge")) {
-			var label = docs.querySelector(".sidebar-item-label") || docs;
-			label.appendChild(badge("hr-docs-badge-item"));
-		}
-		// Also flag the HR parent, so the count shows while the HR group is collapsed.
-		var hr = itemRow("HR");
-		if (hr && !hr.querySelector(".hr-docs-badge")) {
-			var hrLabel = hr.querySelector(".sidebar-item-label") || hr;
-			hrLabel.appendChild(badge("hr-docs-badge-parent"));
-		}
+	}
+
+	function paint() {
+		paintRow(itemRow("HR Docs"));
+		// Also flag the HR parent, so the counts show while the HR group is collapsed.
+		paintRow(itemRow("HR"));
 	}
 
 	function refresh() {
 		frappe.call({
-			method: "manosa_reports.hr_docs.api.pending_count",
+			method: "manosa_reports.hr_docs.api.badge_counts",
 			type: "GET",
 			callback: function (r) {
-				count = cint(r.message);
+				var m = r.message || {};
+				counts = { required: cint(m.required), comments: cint(m.comments) };
 				paint();
 			},
 			error: function () {},
@@ -58,7 +70,7 @@
 		refresh();
 		setInterval(refresh, REFRESH_MS);
 		if (frappe.router && frappe.router.on) frappe.router.on("change", refresh);
-		// The sidebar is re-rendered when switching workspaces; put the badge back when that happens.
+		// The sidebar is re-rendered when switching workspaces; put the badges back when that happens.
 		var pending = null;
 		new MutationObserver(function () {
 			if (pending) return;

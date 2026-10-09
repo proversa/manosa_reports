@@ -2,6 +2,15 @@
 
 {% block title %}{{ _("HR Docs & Advisories") }}{% endblock %}
 
+{% block style %}
+{{ super() }}
+<style>
+	/* Show only the first few lines of each description in the list; the post page shows it all. */
+	.hr-docs-desc-clamp { max-height: 4.5em; line-height: 1.5em; overflow: hidden; }
+	.hr-docs-desc-clamp p, .hr-docs-desc-clamp ul, .hr-docs-desc-clamp ol { margin-bottom: 0; }
+</style>
+{% endblock %}
+
 {% block page_content %}
 <div class="hr-docs">
 	<div class="d-flex flex-wrap align-items-center justify-content-between mb-4">
@@ -14,6 +23,12 @@
 	{% if not employee and not is_manager %}
 	<div class="alert alert-warning">
 		{{ _("Your login is not linked to an active employee record, so only posts for all employees are shown. Please contact HR.") }}
+	</div>
+	{% endif %}
+
+	{% if unread_comments %}
+	<div class="alert alert-primary">
+		{{ _("There are {0} new comments on posts you can see. Posts with new comments are marked below.").format(unread_comments) }}
 	</div>
 	{% endif %}
 
@@ -38,7 +53,7 @@
 
 	<form class="row g-2 mb-4" method="GET" action="/hr-docs">
 		<div class="col-md-5 mb-2">
-			<input class="form-control" type="search" name="q" value="{{ q }}" placeholder="{{ _('Search titles, summaries and tags') }}">
+			<input class="form-control" type="search" name="q" value="{{ q }}" placeholder="{{ _('Search titles, descriptions and tags') }}">
 		</div>
 		<div class="col-md-3 mb-2">
 			<select class="form-control" name="category">
@@ -62,11 +77,13 @@
 	</form>
 
 	{% macro post_card(post) %}
-	<a class="hr-docs-post card mb-3 text-reset" href="/hr-docs/post?name={{ post.name | urlencode }}" style="text-decoration: none;">
+	{% set url = "/hr-docs/post?name=" ~ (post.name | urlencode) %}
+	<div class="hr-docs-post card mb-3">
 		<div class="card-body">
 			<div class="d-flex justify-content-between align-items-start">
-				<h6 class="mb-1">{{ post.title }}</h6>
+				<h6 class="mb-1"><a class="text-reset" href="{{ url }}">{{ post.title }}</a></h6>
 				<div class="text-nowrap ml-2 ms-2">
+					{% if post.unread_comments %}<a class="badge badge-primary bg-primary" href="{{ url }}#comments" title="{{ _('New comments since you last opened this post') }}">{{ post.unread_comments }} {{ _("new") }}</a>{% endif %}
 					{% if post.post_type == 'Advisory' %}<span class="badge badge-info bg-info">{{ _("Advisory") }}</span>{% endif %}
 					{% if post.is_required %}
 						{% if post.ack and post.ack.status in ('Acknowledged', 'Acknowledged Late') %}
@@ -79,13 +96,17 @@
 					{% endif %}
 				</div>
 			</div>
-			<p class="text-muted small mb-1">{{ post.summary }}</p>
-			<div class="small text-muted">
-				{% if post.memo_date %}{{ _("Memo date") }}: {{ frappe.format(post.memo_date, {'fieldtype': 'Date'}) }}{% endif %}
-				{% if post.expiry_date %} · {{ _("Until") }} {{ frappe.format(post.expiry_date, {'fieldtype': 'Date'}) }}{% endif %}
+			{% if post.summary %}<div class="hr-docs-desc-clamp text-muted small mb-1">{{ post.summary }}</div>{% endif %}
+			<div class="small text-muted d-flex flex-wrap align-items-center" style="gap: 0 .75rem;">
+				{% if post.published_on %}<span>{{ _("Posted") }} {{ frappe.format(post.published_on, {'fieldtype': 'Date'}) }}</span>{% endif %}
+				{% if post.memo_date %}<span>{{ _("Memo date") }}: {{ frappe.format(post.memo_date, {'fieldtype': 'Date'}) }}</span>{% endif %}
+				{% if post.expiry_date %}<span>{{ _("Until") }} {{ frappe.format(post.expiry_date, {'fieldtype': 'Date'}) }}</span>{% endif %}
+				<span title="{{ _('Employees who have opened this post') }}">&#128065; {{ _("Seen by {0}").format(post.seen_count) }}</span>
+				{% if post.allow_comments or post.comment_count %}<a class="text-muted" href="{{ url }}#comments">&#128172; {{ post.comment_count }} {{ _("comment") if post.comment_count == 1 else _("comments") }}</a>{% endif %}
+				<a class="ml-auto ms-auto" href="{{ url }}">{{ _("Open") }} &rarr;</a>
 			</div>
 		</div>
-	</a>
+	</div>
 	{% endmacro %}
 
 	{% if pinned %}

@@ -56,3 +56,5 @@ class HRDocPost(Document):
 		if frappe.db.exists("HR Doc Acknowledgement", {"post": self.name, "first_opened_on": ["is", "set"]}):
 			frappe.throw(_("Employees have already opened this post. Archive it instead of deleting it."))
 		frappe.db.delete("HR Doc Acknowledgement", {"post": self.name})
+		frappe.db.delete("HR Doc Comment", {"post": self.name})
+		frappe.db.delete("HR Doc View", {"post": self.name})

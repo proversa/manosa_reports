@@ -1,5 +1,7 @@
 """Who a post is for, and the per-person read log rows for required posts."""
 
+from collections import defaultdict
+
 import frappe
 from frappe import _
 from frappe.utils import add_days, get_url, getdate, now_datetime, nowdate
@@ -7,6 +9,24 @@ from frappe.utils import add_days, get_url, getdate, now_datetime, nowdate
 EMPLOYEE_FIELDS = ["name", "employee_name", "user_id", "department", "designation", "date_of_joining"]
 PENDING_STATUSES = ("Not Opened", "Opened", "Overdue")
 DONE_STATUSES = ("Acknowledged", "Acknowledged Late")
+
+
+POST_FIELDS = [
+	"name",
+	"title",
+	"category",
+	"post_type",
+	"status",
+	"summary",
+	"tags",
+	"memo_date",
+	"expiry_date",
+	"is_required",
+	"is_pinned",
+	"sort_order",
+	"published_on",
+	"allow_comments",
+]
 
 
 def get_audience_employees(post) -> dict:
@@ -214,3 +234,27 @@ def mark_overdue(today=None) -> None:
 		where status in ('Not Opened', 'Opened') and due_on < %s""",
 		(today,),
 	)
+
+
+def get_visible_posts(employee: str | None, include_archived: bool = False, fields=None) -> list:
+	"""Published (optionally archived) posts this employee can see, best first."""
+	statuses = ["Published", "Archived"] if include_archived else ["Published"]
+	posts = frappe.get_all(
+		"HR Doc Post",
+		filters={"status": ["in", statuses]},
+		fields=fields or POST_FIELDS,
+		order_by="is_pinned desc, sort_order asc, published_on desc",
+	)
+	if is_manager():
+		return posts
+
+	audience = defaultdict(list)
+	for row in frappe.get_all(
+		"HR Doc Audience",
+		filters={"parenttype": "HR Doc Post", "parent": ["in", [p.name for p in posts] or [""]]},
+		fields=["parent", "audience_type", "department", "designation", "employee", "hired_after"],
+	):
+		audience[row.parent].append(row)
+
+	emp = frappe.db.get_value("Employee", employee, EMPLOYEE_FIELDS, as_dict=True) if employee else None
+	return [p for p in posts if employee_matches(audience[p.name], emp)]

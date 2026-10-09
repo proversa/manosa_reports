@@ -1,6 +1,11 @@
+import json
+
 import frappe
 from frappe import _
+from frappe.rate_limiter import rate_limit
 from frappe.utils import getdate, now_datetime, nowdate
+
+from manosa_reports.hr_docs import discussion
 
 from manosa_reports.hr_docs.audience import DONE_STATUSES, can_view, ensure_assignment, get_session_employee
 from manosa_reports.hr_docs.schedule import acknowledged_status
@@ -71,3 +76,42 @@ def pending_count() -> int:
 		"HR Doc Acknowledgement",
 		{"employee": employee, "status": ["in", ["Not Opened", "Opened", "Overdue"]]},
 	)
+
+
+@frappe.whitelist(methods=["GET"])
+def badge_counts() -> dict:
+	"""Both sidebar badges in one call: unacknowledged required reads and unread comments."""
+	return {"required": pending_count(), "comments": discussion.unread_count()}
+
+
+@frappe.whitelist(methods=["GET"])
+def get_comments(post: str) -> dict:
+	doc, employee = _get_viewable_post(post)
+	discussion.record_view(doc, employee)
+	return {"comments": discussion.get_comments(doc), "allow_comments": bool(doc.allow_comments)}
+
+
+@frappe.whitelist(methods=["POST"])
+@rate_limit(limit=30, seconds=60)
+def add_comment(post: str, content: str, mentions: str | list | None = None) -> dict:
+	doc, employee = _get_viewable_post(post)
+	if isinstance(mentions, str):
+		mentions = json.loads(mentions or "[]")
+	discussion.add_comment(doc, employee, content, [m for m in (mentions or []) if isinstance(m, str)])
+	return {"comments": discussion.get_comments(doc), "allow_comments": bool(doc.allow_comments)}
+
+
+@frappe.whitelist(methods=["POST"])
+def remove_comment(name: str) -> dict:
+	post = frappe.db.get_value("HR Doc Comment", name, "post")
+	if not post:
+		raise frappe.DoesNotExistError(_("Comment not found."))
+	doc, _employee = _get_viewable_post(post)
+	discussion.remove_comment(name)
+	return {"comments": discussion.get_comments(doc), "allow_comments": bool(doc.allow_comments)}
+
+
+@frappe.whitelist(methods=["GET"])
+def mention_candidates(post: str, txt: str = "") -> list:
+	doc, _employee = _get_viewable_post(post)
+	return discussion.mention_candidates(doc, txt=txt[:50])

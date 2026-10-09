@@ -2,33 +2,17 @@ from collections import defaultdict
 
 import frappe
 from frappe import _
+from frappe.utils import strip_html
 
+from manosa_reports.hr_docs import discussion
 from manosa_reports.hr_docs.audience import (
-	EMPLOYEE_FIELDS,
 	PENDING_STATUSES,
-	employee_matches,
 	get_session_employee,
+	get_visible_posts,
 	is_manager,
 )
 
 no_cache = 1
-
-POST_FIELDS = [
-	"name",
-	"title",
-	"category",
-	"post_type",
-	"status",
-	"summary",
-	"tags",
-	"memo_date",
-	"expiry_date",
-	"is_required",
-	"is_pinned",
-	"sort_order",
-	"published_on",
-]
-
 
 def require_login(path: str):
 	if frappe.session.user == "Guest":
@@ -51,31 +35,8 @@ def get_my_acks(employee: str | None) -> dict:
 	return acks
 
 
-def get_visible_posts(employee: str | None, include_archived: bool = False) -> list:
-	statuses = ["Published", "Archived"] if include_archived else ["Published"]
-	posts = frappe.get_all(
-		"HR Doc Post",
-		filters={"status": ["in", statuses]},
-		fields=POST_FIELDS,
-		order_by="is_pinned desc, sort_order asc, published_on desc",
-	)
-	if is_manager():
-		return posts
-
-	audience = defaultdict(list)
-	for row in frappe.get_all(
-		"HR Doc Audience",
-		filters={"parenttype": "HR Doc Post", "parent": ["in", [p.name for p in posts] or [""]]},
-		fields=["parent", "audience_type", "department", "designation", "employee", "hired_after"],
-	):
-		audience[row.parent].append(row)
-
-	emp = frappe.db.get_value("Employee", employee, EMPLOYEE_FIELDS, as_dict=True) if employee else None
-	return [p for p in posts if employee_matches(audience[p.name], emp)]
-
-
 def matches_search(post, q: str) -> bool:
-	haystack = " ".join(filter(None, [post.title, post.summary, post.tags, post.category])).lower()
+	haystack = " ".join(filter(None, [post.title, strip_html(post.summary or ""), post.tags, post.category])).lower()
 	return all(word in haystack for word in q.lower().split())
 
 
@@ -93,9 +54,16 @@ def get_context(context):
 
 	acks = get_my_acks(employee)
 	posts = get_visible_posts(employee, include_archived=show_archived)
+	names = [p.name for p in posts]
+	seen = discussion.seen_counts(names)
+	comments = discussion.comment_counts(names)
+	unread = discussion.unread_by_post(posts=names)
 	for post in posts:
 		post.ack = acks.get(post.name)
 		post.pending = bool(post.ack and post.ack.status in PENDING_STATUSES)
+		post.seen_count = seen.get(post.name, 0)
+		post.comment_count = comments.get(post.name, 0)
+		post.unread_comments = unread.get(post.name, 0)
 
 	context.required_for_you = sorted(
 		[p for p in posts if p.pending and p.status == "Published"],
@@ -137,3 +105,4 @@ def get_context(context):
 	context.categories = [c for c in categories if c.posts or selected_category]
 	context.pinned = [p for p in posts if p.is_pinned and not q and not selected_category]
 	context.result_count = len(posts)
+	context.unread_comments = sum(unread.values())

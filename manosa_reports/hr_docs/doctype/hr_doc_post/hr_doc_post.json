@@ -22,6 +22,8 @@
   "memo_date",
   "effective_date",
   "expiry_date",
+  "discussion_section",
+  "allow_comments",
   "required_section",
   "is_required",
   "due_days",
@@ -97,11 +99,11 @@
    "label": "Details"
   },
   {
-   "description": "Two or three lines shown on the post card. The PDFs are scans, so search only finds words typed here, in the title and in tags.",
+   "description": "Formatted text. The first few lines show on the post card; the full text shows in a scrolling box on the post page. The PDFs are scans, so search only finds words typed here, in the title and in tags.",
    "fieldname": "summary",
-   "fieldtype": "Small Text",
+   "fieldtype": "Text Editor",
    "in_global_search": 1,
-   "label": "Summary",
+   "label": "Description",
    "reqd": 1
   },
   {
@@ -141,6 +143,18 @@
    "fieldtype": "Date",
    "label": "Expiry Date",
    "mandatory_depends_on": "eval:doc.post_type=='Advisory'"
+  },
+  {
+   "fieldname": "discussion_section",
+   "fieldtype": "Section Break",
+   "label": "Discussion"
+  },
+  {
+   "default": "1",
+   "description": "Employees who can see this post can comment and call out others with @",
+   "fieldname": "allow_comments",
+   "fieldtype": "Check",
+   "label": "Allow Comments"
   },
   {
    "fieldname": "required_section",
@@ -206,7 +220,7 @@
  ],
  "index_web_pages_for_search": 0,
  "links": [],
- "modified": "2026-10-07 09:30:00.000000",
+ "modified": "2026-10-09 10:00:00.000000",
  "modified_by": "Administrator",
  "module": "HR Docs",
  "name": "HR Doc Post",
