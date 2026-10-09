@@ -1,0 +1,234 @@
+{% extends "templates/web.html" %}
+
+{% block title %}{{ post.title }}{% endblock %}
+
+{% block style %}
+{{ super() }}
+<style>
+	/* Formatted description in a box that scrolls after a couple of paragraphs. */
+	.hr-docs-description { max-height: 14em; overflow-y: auto; }
+	.hr-docs-description > :last-child { margin-bottom: 0; }
+	.hr-docs-comment { display: flex; gap: .75rem; padding: .75rem 0; border-top: 1px solid var(--border-color, #e5e7eb); }
+	.hr-docs-comment.mentions-me { background: var(--yellow-50, #fffbeb); }
+	.hr-docs-avatar { flex: 0 0 2rem; height: 2rem; border-radius: 50%; background: var(--gray-200, #e5e7eb);
+		display: flex; align-items: center; justify-content: center; font-size: .75rem; font-weight: 600; }
+	.hr-docs-comment-text { white-space: pre-wrap; word-break: break-word; }
+	.hr-docs-mention { color: var(--primary, #2563eb); font-weight: 600; }
+	#mention-menu.show { display: block; top: 100%; left: 0; }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="hr-docs-post-view">
+	<p class="small mb-2"><a href="/hr-docs">&larr; {{ _("HR Docs & Advisories") }}</a></p>
+	<h2 class="mb-1">{{ post.title }}</h2>
+	<p class="text-muted mb-3">
+		{{ post.category }}
+		{% if post.issued_by %} · {{ _("Issued by") }} {{ post.issued_by }}{% endif %}
+		{% if post.memo_date %} · {{ frappe.format(post.memo_date, {'fieldtype': 'Date'}) }}{% endif %}
+		{% if post.effective_date %} · {{ _("Effective") }} {{ frappe.format(post.effective_date, {'fieldtype': 'Date'}) }}{% endif %}
+		{% if version_count > 1 %} · {{ _("Version") }} {{ version_count }}{% endif %}
+	</p>
+	<p class="small text-muted mb-3">
+		{% if post.published_on %}{{ _("Posted") }} {{ frappe.format(post.published_on, {'fieldtype': 'Datetime'}) }} · {% endif %}
+		<span title="{{ _('Employees who have opened this post') }}">&#128065; {{ _("Seen by {0}").format(seen_count) }}</span>
+		· <a class="text-muted" href="#comments">&#128172; {{ _("Comments") }}</a>
+	</p>
+	{% if post.summary %}<div class="hr-docs-description border rounded p-3 mb-3">{{ post.summary }}</div>{% endif %}
+
+	{% if ack %}
+	<div id="ack-box" class="alert {% if acknowledged %}alert-success{% elif ack.status == 'Overdue' %}alert-danger{% else %}alert-warning{% endif %} d-flex flex-wrap justify-content-between align-items-center">
+		<div id="ack-text">
+			{% if acknowledged %}
+				{{ _("You acknowledged this document on {0}.").format(frappe.format(ack.acknowledged_on, {'fieldtype': 'Datetime'})) }}
+			{% else %}
+				{{ _("This is required reading. Please read it and acknowledge by {0}.").format(frappe.format(ack.due_on, {'fieldtype': 'Date'})) }}
+			{% endif %}
+		</div>
+		{% if not acknowledged %}
+		<button id="ack-button" class="btn btn-primary btn-sm mt-2 mt-md-0" disabled>
+			{{ _("I have read and understood this") }}
+		</button>
+		{% endif %}
+	</div>
+	{% elif no_employee %}
+	<div class="alert alert-info">
+		{{ _("This is required reading, but your login is not linked to an Employee record, so it cannot be acknowledged here. Please ask HR to set your user on your Employee record.") }}
+	</div>
+	{% endif %}
+
+	{% if post.current_file %}
+	<div class="border rounded mb-3" style="height: 80vh;">
+		<iframe id="pdf-frame" src="{{ pdf_url }}" title="{{ post.title }}" style="width: 100%; height: 100%; border: 0;"></iframe>
+	</div>
+	<a class="btn btn-default btn-sm" href="{{ pdf_url }}" target="_blank" rel="noopener">{{ _("Open in new tab / download") }}</a>
+	{% else %}
+	<p class="text-muted">{{ _("No PDF has been attached yet.") }}</p>
+	{% endif %}
+
+	<section id="comments" class="hr-docs-comments mt-5">
+		<h5 class="mb-3">{{ _("Comments") }}</h5>
+		<div id="comment-list"><p class="text-muted small">{{ _("Loading comments…") }}</p></div>
+		<form id="comment-form" class="mt-3 d-none" autocomplete="off">
+			<div class="position-relative">
+				<textarea id="comment-input" class="form-control" rows="3" maxlength="2000"
+					placeholder="{{ _('Write a comment. Type @ to call out a colleague.') }}"></textarea>
+				<div id="mention-menu" class="dropdown-menu" style="max-height: 14rem; overflow-y: auto;"></div>
+			</div>
+			<div class="d-flex justify-content-between align-items-center mt-2">
+				<span class="small text-muted">{{ _("People you call out with @ get an email.") }}</span>
+				<button id="comment-submit" class="btn btn-primary btn-sm" type="submit">{{ _("Post comment") }}</button>
+			</div>
+		</form>
+		<p id="comments-closed" class="text-muted small mt-3 d-none">{{ _("Comments are turned off for this post.") }}</p>
+	</section>
+
+	{% if is_manager %}
+	<p class="mt-4 small"><a href="/app/hr-doc-post/{{ post.name }}">{{ _("Edit this post") }}</a></p>
+	{% endif %}
+</div>
+{% endblock %}
+
+{% block script %}
+{{ super() }}
+<script>
+frappe.ready(() => {
+	const button = document.getElementById("ack-button");
+	const frame = document.getElementById("pdf-frame");
+	if (!button) return;
+	// The PDF request records "opened" in the read log; acknowledging is allowed once it has loaded.
+	if (frame) frame.addEventListener("load", () => { button.disabled = false; });
+	button.addEventListener("click", () => {
+		button.disabled = true;
+		frappe.call({
+			method: "manosa_reports.hr_docs.api.acknowledge",
+			args: { post: {{ post.name | tojson }} },
+			callback: (r) => {
+				const box = document.getElementById("ack-box");
+				box.classList.remove("alert-warning", "alert-danger");
+				box.classList.add("alert-success");
+				document.getElementById("ack-text").textContent = {{ _("Thank you. Your acknowledgment has been recorded.") | tojson }};
+				button.remove();
+			},
+			error: () => { button.disabled = false; },
+		});
+	});
+});
+// Comments with @call-outs.
+frappe.ready(() => {
+	const post = {{ post.name | tojson }};
+	const list = document.getElementById("comment-list");
+	const form = document.getElementById("comment-form");
+	const input = document.getElementById("comment-input");
+	const menu = document.getElementById("mention-menu");
+	const submit = document.getElementById("comment-submit");
+	const picked = {}; // "Full Name" -> user, for people chosen from the @ menu
+	const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]);
+
+	function render(data) {
+		form.classList.toggle("d-none", !data.allow_comments);
+		document.getElementById("comments-closed").classList.toggle("d-none", !!data.allow_comments);
+		if (!data.comments.length) {
+			list.innerHTML = `<p class="text-muted small">${esc({{ _("No comments yet.") | tojson }})}</p>`;
+			return;
+		}
+		// c.html is escaped on the server, with only the verified @mentions wrapped in a span.
+		list.innerHTML = data.comments.map((c) => `
+			<div class="hr-docs-comment${c.mentions_me ? " mentions-me" : ""}">
+				<div class="hr-docs-avatar">${esc(c.initials)}</div>
+				<div class="flex-grow-1">
+					<div class="small"><b>${esc(c.author_name)}</b>
+						<span class="text-muted" title="${esc(c.when_full)}">${esc(c.when)}</span>
+						${c.can_remove ? `<a href="#" class="text-muted ml-2 ms-2" data-remove="${esc(c.name)}">${esc({{ _("Remove") | tojson }})}</a>` : ""}
+					</div>
+					<div class="hr-docs-comment-text">${c.html}</div>
+				</div>
+			</div>`).join("");
+	}
+
+	function load() {
+		frappe.call({ method: "manosa_reports.hr_docs.api.get_comments", type: "GET", args: { post }, callback: (r) => render(r.message) });
+	}
+
+	list.addEventListener("click", (e) => {
+		const name = e.target.getAttribute("data-remove");
+		if (!name) return;
+		e.preventDefault();
+		if (!window.confirm({{ _("Remove this comment?") | tojson }})) return;
+		frappe.call({ method: "manosa_reports.hr_docs.api.remove_comment", args: { name }, callback: (r) => render(r.message) });
+	});
+
+	form.addEventListener("submit", (e) => {
+		e.preventDefault();
+		const content = input.value.trim();
+		if (!content) return;
+		const mentions = Object.keys(picked).filter((n) => content.includes("@" + n)).map((n) => picked[n]);
+		submit.disabled = true;
+		frappe.call({
+			method: "manosa_reports.hr_docs.api.add_comment",
+			args: { post, content, mentions: JSON.stringify(mentions) },
+			callback: (r) => { submit.disabled = false; input.value = ""; render(r.message); },
+			error: () => { submit.disabled = false; },
+		});
+	});
+
+	// The @ menu: look up people who can see this post as the user types after "@".
+	let timer = null, active = 0, token = null;
+	function mentionToken() {
+		const before = input.value.slice(0, input.selectionStart);
+		const m = before.match(/(^|\s)@([^\s@]{0,30})$/);
+		return m ? { query: m[2], start: before.length - m[2].length - 1 } : null;
+	}
+	function closeMenu() { menu.classList.remove("show"); menu.innerHTML = ""; token = null; }
+	function choose(item) {
+		const name = item.getAttribute("data-name");
+		picked[name] = item.getAttribute("data-user");
+		const end = input.selectionStart;
+		input.value = input.value.slice(0, token.start) + "@" + name + " " + input.value.slice(end);
+		const caret = token.start + name.length + 2;
+		input.setSelectionRange(caret, caret);
+		closeMenu();
+		input.focus();
+	}
+	function highlight() {
+		[...menu.children].forEach((el, i) => el.classList.toggle("active", i === active));
+	}
+	input.addEventListener("input", () => {
+		clearTimeout(timer);
+		const t = mentionToken();
+		if (!t) return closeMenu();
+		timer = setTimeout(() => {
+			frappe.call({
+				method: "manosa_reports.hr_docs.api.mention_candidates", type: "GET", args: { post, txt: t.query },
+				callback: (r) => {
+					const people = r.message || [];
+					if (!people.length) return closeMenu();
+					token = t; active = 0;
+					menu.innerHTML = people.map((p) => `
+						<a href="#" class="dropdown-item" data-user="${esc(p.user)}" data-name="${esc(p.name)}">
+							${esc(p.name)} <span class="text-muted small">${esc(p.designation)}</span></a>`).join("");
+					menu.classList.add("show");
+					highlight();
+				},
+			});
+		}, 200);
+	});
+	input.addEventListener("keydown", (e) => {
+		if (!menu.classList.contains("show")) return;
+		const items = menu.children;
+		if (e.key === "ArrowDown") { active = (active + 1) % items.length; highlight(); e.preventDefault(); }
+		else if (e.key === "ArrowUp") { active = (active - 1 + items.length) % items.length; highlight(); e.preventDefault(); }
+		else if (e.key === "Enter" || e.key === "Tab") { choose(items[active]); e.preventDefault(); }
+		else if (e.key === "Escape") { closeMenu(); }
+	});
+	menu.addEventListener("mousedown", (e) => {
+		const item = e.target.closest(".dropdown-item");
+		if (item) { e.preventDefault(); choose(item); }
+	});
+	input.addEventListener("blur", () => setTimeout(closeMenu, 150));
+
+	load();
+	setInterval(load, 60 * 1000);
+});
+</script>
+{% endblock %}

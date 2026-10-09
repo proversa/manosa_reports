@@ -1,0 +1,262 @@
+{
+ "actions": [],
+ "autoname": "format:HRDOC-{#####}",
+ "creation": "2026-10-07 09:30:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "title",
+  "category",
+  "post_type",
+  "column_break_main",
+  "status",
+  "is_pinned",
+  "sort_order",
+  "published_on",
+  "details_section",
+  "summary",
+  "tags",
+  "column_break_details",
+  "memo_ref",
+  "issued_by",
+  "memo_date",
+  "effective_date",
+  "expiry_date",
+  "discussion_section",
+  "allow_comments",
+  "required_section",
+  "is_required",
+  "due_days",
+  "audience",
+  "file_section",
+  "versions",
+  "current_version_no",
+  "current_file",
+  "ack_version_no"
+ ],
+ "fields": [
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "in_global_search": 1,
+   "in_list_view": 1,
+   "label": "Title",
+   "reqd": 1
+  },
+  {
+   "fieldname": "category",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Category",
+   "options": "HR Doc Category",
+   "reqd": 1
+  },
+  {
+   "default": "Document",
+   "fieldname": "post_type",
+   "fieldtype": "Select",
+   "in_standard_filter": 1,
+   "label": "Type",
+   "options": "Document\nAdvisory",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_main",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Draft\nPublished\nArchived",
+   "reqd": 1
+  },
+  {
+   "fieldname": "is_pinned",
+   "fieldtype": "Check",
+   "label": "Pin to Top of Portal"
+  },
+  {
+   "default": "0",
+   "description": "Lower numbers show first within the category",
+   "fieldname": "sort_order",
+   "fieldtype": "Int",
+   "label": "Sort Order"
+  },
+  {
+   "fieldname": "published_on",
+   "fieldtype": "Datetime",
+   "label": "Published On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "details_section",
+   "fieldtype": "Section Break",
+   "label": "Details"
+  },
+  {
+   "description": "Formatted text. The first few lines show on the post card; the full text shows in a scrolling box on the post page. The PDFs are scans, so search only finds words typed here, in the title and in tags.",
+   "fieldname": "summary",
+   "fieldtype": "Text Editor",
+   "in_global_search": 1,
+   "label": "Description",
+   "reqd": 1
+  },
+  {
+   "description": "Comma-separated, e.g. overtime, meal, reimbursement",
+   "fieldname": "tags",
+   "fieldtype": "Data",
+   "label": "Tags"
+  },
+  {
+   "fieldname": "column_break_details",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "memo_ref",
+   "fieldtype": "Data",
+   "label": "Memo / Reference No."
+  },
+  {
+   "fieldname": "issued_by",
+   "fieldtype": "Data",
+   "label": "Issued By"
+  },
+  {
+   "fieldname": "memo_date",
+   "fieldtype": "Date",
+   "label": "Memo Date"
+  },
+  {
+   "fieldname": "effective_date",
+   "fieldtype": "Date",
+   "label": "Effective Date"
+  },
+  {
+   "depends_on": "eval:doc.post_type=='Advisory'",
+   "description": "The advisory is archived automatically after this date",
+   "fieldname": "expiry_date",
+   "fieldtype": "Date",
+   "label": "Expiry Date",
+   "mandatory_depends_on": "eval:doc.post_type=='Advisory'"
+  },
+  {
+   "fieldname": "discussion_section",
+   "fieldtype": "Section Break",
+   "label": "Discussion"
+  },
+  {
+   "default": "1",
+   "description": "Employees who can see this post can comment and call out others with @",
+   "fieldname": "allow_comments",
+   "fieldtype": "Check",
+   "label": "Allow Comments"
+  },
+  {
+   "fieldname": "required_section",
+   "fieldtype": "Section Break",
+   "label": "Required Reading"
+  },
+  {
+   "description": "Each person in the audience must open the PDF and acknowledge it",
+   "fieldname": "is_required",
+   "fieldtype": "Check",
+   "label": "Required Reading"
+  },
+  {
+   "default": "7",
+   "depends_on": "is_required",
+   "fieldname": "due_days",
+   "fieldtype": "Int",
+   "label": "Due Within (Days)",
+   "mandatory_depends_on": "is_required"
+  },
+  {
+   "description": "Who can see this post and, if required, who must acknowledge it. Leave empty for all active employees.",
+   "fieldname": "audience",
+   "fieldtype": "Table",
+   "label": "Audience",
+   "options": "HR Doc Audience"
+  },
+  {
+   "fieldname": "file_section",
+   "fieldtype": "Section Break",
+   "label": "PDF"
+  },
+  {
+   "description": "Add a new row to replace the PDF. The last row is the current version. Upload as a private file.",
+   "fieldname": "versions",
+   "fieldtype": "Table",
+   "label": "Versions",
+   "options": "HR Doc Version"
+  },
+  {
+   "fieldname": "current_version_no",
+   "fieldtype": "Int",
+   "label": "Current Version",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "current_file",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Current File",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "description": "The latest version that required everyone to acknowledge again",
+   "fieldname": "ack_version_no",
+   "fieldtype": "Int",
+   "label": "Acknowledgements Count Against Version",
+   "no_copy": 1,
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-10-09 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "HR Docs",
+ "name": "HR Doc Post",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR Docs Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "search_fields": "title,category,tags",
+ "show_title_field_in_link": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "title",
+ "track_changes": 1
+}

@@ -1,0 +1,162 @@
+{% extends "templates/web.html" %}
+
+{% block title %}{{ _("HR Docs & Advisories") }}{% endblock %}
+
+{% block style %}
+{{ super() }}
+<style>
+	/* Show only the first few lines of each description in the list; the post page shows it all. */
+	.hr-docs-desc-clamp { max-height: 4.5em; line-height: 1.5em; overflow: hidden; }
+	/* Alternate category backgrounds so each category reads as its own block. */
+	.hr-docs-category { border-radius: .5rem; padding: 1rem 1rem .5rem; }
+	.hr-docs-shade-a { background: rgba(37, 99, 235, .06); }
+	.hr-docs-shade-b { background: rgba(120, 113, 108, .09); }
+	.hr-docs-show-more { margin-bottom: .75rem; }
+	.hr-docs-desc-clamp p, .hr-docs-desc-clamp ul, .hr-docs-desc-clamp ol { margin-bottom: 0; }
+</style>
+{% endblock %}
+
+{% set INITIAL_POSTS = 3 %}
+{% set MORE_POSTS = 5 %}
+
+{% block page_content %}
+<div class="hr-docs">
+	<div class="d-flex flex-wrap align-items-center justify-content-between mb-4">
+		<h1 class="mb-2">{{ _("HR Docs & Advisories") }}</h1>
+		{% if is_manager %}
+		<a class="btn btn-default btn-sm" href="/app/hr-doc-post/new">{{ _("New Post") }}</a>
+		{% endif %}
+	</div>
+
+	{% if not employee and not is_manager %}
+	<div class="alert alert-warning">
+		{{ _("Your login is not linked to an active employee record, so only posts for all employees are shown. Please contact HR.") }}
+	</div>
+	{% endif %}
+
+	{% if unread_comments %}
+	<div class="alert alert-primary">
+		{{ _("There are {0} new comments on posts you can see. Posts with new comments are marked below.").format(unread_comments) }}
+	</div>
+	{% endif %}
+
+	{% if required_for_you %}
+	<div class="hr-docs-required card mb-4">
+		<div class="card-body">
+			<h5 class="card-title">{{ _("Required for you") }}</h5>
+			<ul class="list-unstyled mb-0">
+				{% for post in required_for_you %}
+				<li class="d-flex justify-content-between align-items-center py-2 border-top">
+					<a href="/hr-docs/post?name={{ post.name | urlencode }}">{{ post.title }}</a>
+					<span class="badge {% if post.ack.status == 'Overdue' %}badge-danger bg-danger{% else %}badge-warning bg-warning{% endif %}">
+						{% if post.ack.status == 'Overdue' %}{{ _("Overdue") }}{% else %}{{ _("Due") }}{% endif %}
+						{{ frappe.format(post.ack.due_on, {'fieldtype': 'Date'}) }}
+					</span>
+				</li>
+				{% endfor %}
+			</ul>
+		</div>
+	</div>
+	{% endif %}
+
+	<form class="row g-2 mb-4" method="GET" action="/hr-docs">
+		<div class="col-md-5 mb-2">
+			<input class="form-control" type="search" name="q" value="{{ q }}" placeholder="{{ _('Search titles, descriptions and tags') }}">
+		</div>
+		<div class="col-md-3 mb-2">
+			<select class="form-control" name="category">
+				<option value="">{{ _("All categories") }}</option>
+				{% for name in all_categories %}
+				<option value="{{ name }}" {% if name == selected_category %}selected{% endif %}>{{ name }}</option>
+				{% endfor %}
+			</select>
+		</div>
+		<div class="col-md-2 mb-2">
+			<select class="form-control" name="view">
+				<option value="">{{ _("All posts") }}</option>
+				<option value="required" {% if view == 'required' %}selected{% endif %}>{{ _("Required only") }}</option>
+				<option value="pending" {% if view == 'pending' %}selected{% endif %}>{{ _("Not yet acknowledged") }}</option>
+				<option value="archived" {% if view == 'archived' %}selected{% endif %}>{{ _("Archived") }}</option>
+			</select>
+		</div>
+		<div class="col-md-2 mb-2">
+			<button class="btn btn-primary w-100 btn-block" type="submit">{{ _("Search") }}</button>
+		</div>
+	</form>
+
+	{% macro post_card(post, hidden=False) %}
+	{% set url = "/hr-docs/post?name=" ~ (post.name | urlencode) %}
+	<div class="hr-docs-post card mb-3{% if hidden %} d-none hr-docs-more{% endif %}">
+		<div class="card-body">
+			<div class="d-flex justify-content-between align-items-start">
+				<h6 class="mb-1"><a class="text-reset" href="{{ url }}">{{ post.title }}</a></h6>
+				<div class="text-nowrap ml-2 ms-2">
+					{% if post.unread_comments %}<a class="badge badge-primary bg-primary" href="{{ url }}#comments" title="{{ _('New comments since you last opened this post') }}">{{ post.unread_comments }} {{ _("new") }}</a>{% endif %}
+					{% if post.post_type == 'Advisory' %}<span class="badge badge-info bg-info">{{ _("Advisory") }}</span>{% endif %}
+					{% if post.is_required %}
+						{% if post.ack and post.ack.status in ('Acknowledged', 'Acknowledged Late') %}
+						<span class="badge badge-success bg-success">{{ _("Acknowledged") }}</span>
+						{% elif post.ack %}
+						<span class="badge badge-warning bg-warning">{{ _("Required") }}</span>
+						{% else %}
+						<span class="badge badge-secondary bg-secondary">{{ _("Required") }}</span>
+						{% endif %}
+					{% endif %}
+				</div>
+			</div>
+			{% if post.summary %}<div class="hr-docs-desc-clamp text-muted small mb-1">{{ post.summary }}</div>{% endif %}
+			<div class="small text-muted d-flex flex-wrap align-items-center" style="gap: 0 .75rem;">
+				{% if post.published_on %}<span>{{ _("Posted") }} {{ frappe.format(post.published_on, {'fieldtype': 'Date'}) }}</span>{% endif %}
+				{% if post.memo_date %}<span>{{ _("Memo date") }}: {{ frappe.format(post.memo_date, {'fieldtype': 'Date'}) }}</span>{% endif %}
+				{% if post.expiry_date %}<span>{{ _("Until") }} {{ frappe.format(post.expiry_date, {'fieldtype': 'Date'}) }}</span>{% endif %}
+				<span title="{{ _('Employees who have opened this post') }}">&#128065; {{ _("Seen by {0}").format(post.seen_count) }}</span>
+				{% if post.allow_comments or post.comment_count %}<a class="text-muted" href="{{ url }}#comments">&#128172; {{ post.comment_count }} {{ _("comment") if post.comment_count == 1 else _("comments") }}</a>{% endif %}
+				<a class="ml-auto ms-auto" href="{{ url }}">{{ _("Open") }} &rarr;</a>
+			</div>
+		</div>
+	</div>
+	{% endmacro %}
+
+	{% if pinned %}
+	<h4 class="mt-2 mb-3">{{ _("Pinned") }}</h4>
+	{% for post in pinned %}{{ post_card(post) }}{% endfor %}
+	{% endif %}
+
+	{% for category in categories %}
+	<section class="hr-docs-category {{ loop.cycle('hr-docs-shade-a', 'hr-docs-shade-b') }} mt-4">
+		<h4 class="mb-1">{{ category.name }}</h4>
+		{% if category.description %}<p class="text-muted small">{{ category.description }}</p>{% endif %}
+		{% for post in category.posts %}
+			{{ post_card(post, hidden=loop.index > INITIAL_POSTS) }}
+		{% else %}
+			<p class="text-muted">{{ _("No posts in this category yet.") }}</p>
+		{% endfor %}
+		{% if category.posts | length > INITIAL_POSTS %}
+		<button type="button" class="btn btn-default btn-sm hr-docs-show-more">
+			{{ _("Show more") }} (<span class="hr-docs-remaining">{{ category.posts | length - INITIAL_POSTS }}</span> {{ _("left") }})
+		</button>
+		{% endif %}
+	</section>
+	{% endfor %}
+
+	{% if not result_count %}
+	<p class="text-muted mt-4">{{ _("No posts match your search.") }}</p>
+	{% endif %}
+</div>
+{% endblock %}
+
+{% block script %}
+{{ super() }}
+<script>
+// "Show more" reveals the next few hidden posts in its category, in place.
+document.addEventListener("click", (e) => {
+	const button = e.target.closest(".hr-docs-show-more");
+	if (!button) return;
+	const hidden = button.closest(".hr-docs-category").querySelectorAll(".hr-docs-more.d-none");
+	[...hidden].slice(0, {{ MORE_POSTS }}).forEach((card) => card.classList.remove("d-none"));
+	const left = hidden.length - {{ MORE_POSTS }};
+	if (left > 0) button.querySelector(".hr-docs-remaining").textContent = left;
+	else button.remove();
+});
+</script>
+{% endblock %}
