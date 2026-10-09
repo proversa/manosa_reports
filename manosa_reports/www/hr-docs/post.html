@@ -30,6 +30,10 @@
 		</button>
 		{% endif %}
 	</div>
+	{% elif no_employee %}
+	<div class="alert alert-info">
+		{{ _("This is required reading, but your login is not linked to an Employee record, so it cannot be acknowledged here. Please ask HR to set your user on your Employee record.") }}
+	</div>
 	{% endif %}
 
 	{% if post.current_file %}

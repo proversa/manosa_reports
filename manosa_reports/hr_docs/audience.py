@@ -91,28 +91,53 @@ def sync_assignments(post, notify: bool = True) -> int:
 	for emp in get_audience_employees(post).values():
 		if emp.name in existing:
 			continue
-		ack = frappe.get_doc(
-			{
-				"doctype": "HR Doc Acknowledgement",
-				"post": post.name,
-				"post_title": post.title,
-				"version_no": post.ack_version_no,
-				"employee": emp.name,
-				"employee_name": emp.employee_name,
-				"user": emp.user_id,
-				"department": emp.department,
-				"designation": emp.designation,
-				"status": "Not Opened",
-				"assigned_on": now_datetime(),
-				"due_on": due_on,
-			}
-		)
-		ack.flags.from_portal_logic = True
-		ack.insert(ignore_permissions=True)
+		ack = _create_ack(post, emp, due_on)
 		created += 1
 		if notify:
 			send_notice(ack, post, first=True)
 	return created
+
+
+def ensure_assignment(post, employee: str | None):
+	"""The employee's read log row for the current version, created on the spot if it is missing.
+
+	Covers people who joined the audience after the post was saved and before the daily sync ran.
+	"""
+	if not (employee and post.is_required and post.status == "Published" and post.ack_version_no):
+		return None
+	filters = {"post": post.name, "employee": employee, "version_no": post.ack_version_no}
+	name = frappe.db.get_value("HR Doc Acknowledgement", filters, "name")
+	if name:
+		return frappe.get_doc("HR Doc Acknowledgement", name)
+	if not is_in_audience(post, employee):
+		return None
+	emp = frappe.db.get_value("Employee", employee, EMPLOYEE_FIELDS, as_dict=True)
+	ack = _create_ack(post, emp, add_days(nowdate(), post.due_days or 7))
+	# Called from GET pages, which are not committed automatically.
+	frappe.db.commit()
+	return ack
+
+
+def _create_ack(post, emp, due_on):
+	ack = frappe.get_doc(
+		{
+			"doctype": "HR Doc Acknowledgement",
+			"post": post.name,
+			"post_title": post.title,
+			"version_no": post.ack_version_no,
+			"employee": emp.name,
+			"employee_name": emp.employee_name,
+			"user": emp.user_id,
+			"department": emp.department,
+			"designation": emp.designation,
+			"status": "Not Opened",
+			"assigned_on": now_datetime(),
+			"due_on": due_on,
+		}
+	)
+	ack.flags.from_portal_logic = True
+	ack.insert(ignore_permissions=True)
+	return ack
 
 
 def supersede_older_versions(post) -> None:

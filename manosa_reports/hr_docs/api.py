@@ -2,7 +2,7 @@ import frappe
 from frappe import _
 from frappe.utils import getdate, now_datetime, nowdate
 
-from manosa_reports.hr_docs.audience import DONE_STATUSES, can_view, get_session_employee
+from manosa_reports.hr_docs.audience import DONE_STATUSES, can_view, ensure_assignment, get_session_employee
 from manosa_reports.hr_docs.schedule import acknowledged_status
 
 
@@ -17,14 +17,7 @@ def _get_viewable_post(post: str):
 
 
 def _current_ack(doc, employee):
-	if not (doc.is_required and employee and doc.ack_version_no):
-		return None
-	name = frappe.db.get_value(
-		"HR Doc Acknowledgement",
-		{"post": doc.name, "employee": employee, "version_no": doc.ack_version_no},
-		"name",
-	)
-	return frappe.get_doc("HR Doc Acknowledgement", name) if name else None
+	return ensure_assignment(doc, employee)
 
 
 @frappe.whitelist(methods=["GET"])
